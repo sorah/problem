@@ -16,7 +16,9 @@ module Problem
   class Railtie < ::Rails::Railtie
     config.problem = ActiveSupport::OrderedOptions.new
 
-    initializer("problem.config") do |app|
+    # After config/initializers, so the prefix can be set there as well as in
+    # config/application.rb and the environment files.
+    initializer("problem.config", after: :load_config_initializers) do |app|
       prefix = app.config.problem.type_prefix
       Problem.config.type_prefix = prefix if prefix
     end

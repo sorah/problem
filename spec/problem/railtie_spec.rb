@@ -18,6 +18,12 @@ RSpec.describe(Problem::Railtie) do
     expect(initializer("problem.renderer")).not_to be_nil
   end
 
+  # Without this the prefix can only be set in config/application.rb, because a railtie
+  # initializer otherwise runs before config/initializers is loaded.
+  it "reads the configuration after config/initializers has been loaded" do
+    expect(initializer("problem.config").after).to eq(:load_config_initializers)
+  end
+
   it "applies config.problem.type_prefix to the gem's configuration" do
     problem_config = ActiveSupport::OrderedOptions.new
     problem_config.type_prefix = "https://example.com/problems/"
