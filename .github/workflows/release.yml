@@ -1,0 +1,49 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_test.yml # zizmor: ignore[self-repository]
+
+  release:
+    needs: [test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: rubygems
+      url: https://rubygems.org/gems/problem
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: "4.0"
+          # Not cached: a restored cache would be a way to smuggle code into the
+          # gem this job publishes.
+          bundler-cache: false
+
+      - run: bundle install
+
+      # Left as a draft so the notes can be read before they are announced.
+      - name: Create GitHub release
+        run: gh release create "${GITHUB_REF_NAME}" --verify-tag --generate-notes --draft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Runs `rake release`; the tag already exists, so it only builds and pushes.
+      - name: Publish to RubyGems
+        uses: rubygems/release-gem@7f9650160c1a4e7989fdc9855807bdbd421d8b6b # v1.4.1
