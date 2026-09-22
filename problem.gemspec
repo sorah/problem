@@ -23,7 +23,7 @@ Gem::Specification.new do |spec|
     "rubygems_mfa_required" => "true",
   }
 
-  spec.files = Dir["lib/**/*.rb", "sig/**/*.rbs", "README.md", "LICENSE.txt", "CHANGELOG.md"]
+  spec.files = Dir["lib/**/*.rb", "sig/**/*.rbs", "README.md", "DESIGN.md", "LICENSE.txt", "CHANGELOG.md"]
   spec.require_paths = ["lib"]
 
   spec.add_dependency "actionpack", ">= 7.0"
