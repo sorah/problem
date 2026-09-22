@@ -7,6 +7,7 @@
 require "problem/version"
 require "problem/document"
 require "problem/details"
+require "problem/detailable"
 
 # RFC 9457 Problem Details for HTTP APIs.
 module Problem

@@ -1,0 +1,37 @@
+module Problem
+  # What `rescue_from Problem::Detailable` actually hands a handler: the exception itself,
+  # carrying the concern. A module self-type constrains includers, not the module's own
+  # type, so the two have to be spelled out together.
+  type detailable_error = ::Exception & Detailable
+
+  # The class-level state and DSL Problem::Detailable installs. Declared by hand because
+  # `class_attribute` defines its accessors at runtime and `class_methods do ... end`
+  # builds ClassMethods from a block, neither of which RBS can infer.
+  interface _DetailableClass
+    def problem_status: () -> Integer?
+    def problem_status=: (Integer?) -> void
+    def problem_title: () -> String?
+    def problem_title=: (String?) -> void
+    def problem_uri: () -> String?
+    def problem_uri=: (String?) -> void
+    def problem_type_prefix: () -> String?
+    def problem_type_prefix=: (String?) -> void
+
+    def status: (?Integer?) -> Integer?
+    def title: (?String?, ?interpolations: Hash[Symbol, untyped]) -> String?
+    def type: (?String?) -> String?
+    def type_prefix: (?String?) -> String?
+
+    def name: () -> String?
+  end
+
+  # #to_problem reaches the DSL through `self.class`, which is what keeps a prepended
+  # catalogue override in the path.
+  interface _DetailableSelf
+    def class: () -> _DetailableClass
+
+    # The including exception's own constructor, which #initialize forwards to. Its shape
+    # belongs to that class, so it is untyped here rather than pinned to Exception.
+    def initialize: (*untyped, **untyped) -> void
+  end
+end
