@@ -110,9 +110,10 @@ sixty chances to typo it.
 ## Plugging in a problem catalogue
 
 A deployment that keeps its problems in a registry (an enum, a YAML file, a table) wants
-type, status and title derived from it. The README shows the simple version, overriding
-`self.title` on a base class. When the catalogue layer is its own concern, prepend a
-module to the error class's singleton and call `super` for anything it does not cover:
+type, status and title derived from it. `Problem::I18nable` is the shipped example of the
+simple case, overriding `title` in a `ClassMethods` that sits ahead of the DSL. When the
+catalogue layer is its own concern, prepend a module to the error class's singleton and
+call `super` for anything it does not cover:
 
 ```ruby
 module Typeable
@@ -158,6 +159,22 @@ catalogue layer has to re-apply the prepend itself, on every inclusion.
 including both silent failure modes. Without that spec the extraction is one refactor
 away from breaking quietly.
 
+### Why I18nable needs none of that ceremony
+
+`Problem::I18nable` overrides the same method and is a plain `ActiveSupport::Concern`,
+with no prepend at all. It gets away with it by declaring `include Detailable` as a
+concern dependency: `ActiveSupport::Concern` then includes `Detailable` first and extends
+`I18nable::ClassMethods` afterwards, which puts it ahead in the singleton ancestry and
+leaves `super` pointing at the literal DSL. Re-including `Detailable` explicitly, in
+either order, changes nothing, because a module already in the ancestry is not moved.
+
+The prepend is only needed when the layer supplies terminal fallbacks of its own, as a
+catalogue concern does. `I18nable` supplies none; it defers to `super`.
+
+`i18n` is not a declared dependency of the gem, so `Problem::I18nable` is autoloaded
+rather than required. A host that never references the constant never loads `i18n`
+through it.
+
 ## Rendering
 
 One `rescue_from`, registered against `Problem::Detailable` itself. A Module is matched
@@ -192,6 +209,11 @@ A Railtie, because that is what Rails offers for exactly this, instead of an ini
 every host copies. The same work is a plain `Problem.install!` for a Rack host or a spec
 that never boots Rails, which is how this gem's own suite reaches it.
 
+`problem.config` declares `after: :load_config_initializers`. A railtie initializer
+otherwise runs before `config/initializers` is loaded, which would make
+`config.problem.type_prefix` silently do nothing when set in the file an application
+would most expect to set it in.
+
 The renderer takes the status from the object it is handed and calls `to_json` on it,
 requiring nothing more. That is what lets a deployment render through its own serializer.
 
@@ -225,6 +247,7 @@ that Steep can check and which `ActiveSupport::Concern` picks up by name.
 lib/problem/document.rb        to_h / as_json / to_json, and the media type
 lib/problem/details.rb         the value object
 lib/problem/detailable.rb      the class-level DSL, and #to_problem
+lib/problem/i18nable.rb        titles from I18n, autoloaded
 lib/problem/retry_after.rb     Retry-After, as a worked example of the hooks
 lib/problem/rescuable.rb       rescue_from, split into overridable steps
 lib/problem/exceptions_app.rb  the config.exceptions_app wrapper
@@ -236,7 +259,9 @@ sig/manual/                    what RBS cannot infer
 ## Deliberately out of scope
 
 * A catalogue of problem types, and anything that reads one. The seam is above.
-* `Accept-Language` negotiation. `around_problem_render` is where yours plugs in.
+* `Accept-Language` negotiation. `Problem::I18nable` translates a title once a locale is
+  set; choosing that locale is the application's job, and `around_problem_render` is
+  where it plugs in.
 * Validation-error serialization. RFC 9457 defines no `errors` member; use an extension.
 * `application/problem+xml`.
 * Anything Connect or gRPC. `render_problem` is the seam, and

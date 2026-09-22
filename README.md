@@ -1,10 +1,11 @@
-# problem
+# problem: RFC 9457 Problem Details for Rails APIs
 
-RFC 9457 Problem Details for Rails APIs.
-
-Declare what an error means on the error class. Raise it from anywhere. Every API error
-in your app goes out as a consistent `application/problem+json` document, including the
-ones raised before your controller runs.
+`problem` renders the errors a Rails API raises as
+[RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html) problem details. An error class
+declares its type, title and status once, next to the code that raises it, and a
+controller concern turns any of them into an `application/problem+json` response. A
+companion exceptions app covers what Rails raises before your controller runs, so a
+routing error and a business rule violation come back in the same shape.
 
 ```ruby
 class Errors::Forbidden < Errors::ApiError
@@ -13,42 +14,56 @@ class Errors::Forbidden < Errors::ApiError
   title "Forbidden"
 end
 
-raise Errors::Forbidden.new(detail: "You cannot access this resource")
+raise Errors::Forbidden.new(detail: "Only the owner can cancel this order")
 ```
 
-```http
+```console
+$ curl -i https://api.example.com/orders/1/cancel
 HTTP/1.1 403 Forbidden
 Content-Type: application/problem+json
 
-{"type":"forbidden","title":"Forbidden","status":403,"detail":"You cannot access this resource"}
+{"type":"forbidden","title":"Forbidden","status":403,"detail":"Only the owner can cancel this order"}
 ```
 
-## Why
+## Features
 
-* **One place per error.** Status, title and type live on the class, next to the code that
-  raises it, instead of in a mapping table that drifts.
-* **Clients get a stable identifier.** `type` is what callers dispatch on, so you can
-  reword a title without breaking them.
-* **Nothing leaks.** Framework exceptions get the same treatment, and their bodies carry
-  the status text rather than the exception message.
-* **Small surface.** Two mixins, a middleware and a renderer. Under 250 lines of code, no
-  dependency beyond `actionpack`.
-* **Typed.** RBS signatures ship with the gem.
+- **One place per error.** Status, title and type live on the class, not in a mapping
+  table that drifts away from the code raising it.
+- **Stable identifiers for clients.** Callers dispatch on `type`, so you can reword a
+  title without breaking them.
+- **Covers what the controller never sees.** Routing errors, unreadable bodies and
+  middleware failures render as problem documents too, carrying the status text rather
+  than the exception message.
+- **Localized titles**, keyed by type, with a one-line include.
+- **Small.** Two mixins, an exceptions app and a renderer. Under 250 lines of code, and
+  `actionpack` is the only dependency.
+- **Typed.** RBS signatures ship with the gem.
+
+## Requirements
+
+Ruby 3.3 or later, and `actionpack` 7.0 or later. `Problem::I18nable` additionally needs
+the `i18n` gem, which Rails already brings.
 
 ## Installation
 
-```ruby
-gem "problem"
+```
+bundle add problem
 ```
 
-Rails wires itself up. Set the URI prefix your type identifiers live under:
+Rails wires itself up through a railtie. Add an initializer for the URI prefix your type
+identifiers live under:
 
 ```ruby
-# config/application.rb
-config.problem.type_prefix = "https://api-probs.example.com/"
+# config/initializers/problem.rb
+Rails.application.configure do
+  config.problem.type_prefix = "https://api-probs.example.com/"
+end
 ```
 
-Outside Rails, call `Problem.install!` and `Problem.configure` yourself.
+`config/application.rb` and the environment files work too.
+
+Outside Rails, call `Problem.install!` at boot and configure it with
+`Problem.configure { |c| c.type_prefix = "..." }`.
 
 ## Getting started
 
@@ -87,12 +102,13 @@ module Errors
 end
 ```
 
-One base class carrying the concern is all it takes. Everything below inherits the
-declaration and overrides what it needs.
+One base class carrying the concern is enough. Everything under it inherits the
+declaration and overrides only what differs.
 
 ### 2. Rescue them once
 
 ```ruby
+# app/controllers/application_controller.rb
 class ApplicationController < ActionController::API
   include Problem::Rescuable
 end
@@ -107,9 +123,9 @@ raise Errors::Forbidden.new(detail: "Only the owner can cancel this order")
 ```
 
 `detail` is the part that differs between two occurrences of the same problem. Everything
-else is a property of the class, so you declare it once.
+else belongs to the class, so it is declared once.
 
-## Defining your own
+## Defining your own errors
 
 Inherit from the closest base and declare what changes:
 
@@ -126,42 +142,24 @@ A subclass that declares nothing renders exactly as its parent:
 class Errors::ConfidentialClientRequired < Errors::Unauthorized; end
 ```
 
-That is worth knowing about deliberately. When a caller must not be able to tell two
-failures apart, an empty subclass is the whole implementation.
-
-## Catching what escapes the controller
-
-A routing error, an unreadable request body or a failure in middleware never reaches a
-controller, so `Problem::Rescuable` never sees it. Wire the exceptions app to cover them:
-
-```ruby
-# config/application.rb
-config.exceptions_app = Problem::ExceptionsApp.new(
-  ActionDispatch::PublicExceptions.new(Rails.public_path),
-)
-```
-
-Browsers keep getting the static error pages. Everything else gets a problem document,
-with the status Rails already mapped the exception to.
+That is worth knowing deliberately. When a caller must not be able to tell two failures
+apart, an empty subclass is the whole implementation.
 
 ## Localized titles
 
-`title` is the only member meant for a human, so it is the only one worth translating.
-Override it once on your base class:
+`title` is the only member written for a human, so it is the only one worth translating.
+Include `Problem::I18nable` in your base class:
 
 ```ruby
-class Errors::ApiError < StandardError
-  include Problem::Detailable
-
-  def self.title(value = nil, interpolations: {})
-    return super if value || problem_title
-
-    I18n.t(type.tr("-", "_"), scope: "problem_details.titles", **interpolations)
+module Errors
+  class ApiError < StandardError
+    include Problem::I18nable
   end
 end
 ```
 
 ```yaml
+# config/locales/en.yml
 en:
   problem_details:
     titles:
@@ -169,7 +167,26 @@ en:
       forbidden: "Forbidden"
 ```
 
-A class that spells out a literal `title` keeps it, so you can migrate gradually.
+Titles are keyed by the declared type with dashes replaced, under
+`problem_details.titles`. Both are adjustable:
+
+```ruby
+class Errors::ApiError < StandardError
+  include Problem::I18nable
+
+  title_scope "errors.titles"      # inherited by subclasses
+end
+
+class Errors::NotFound < Errors::ApiError
+  type "gone-missing"
+  status 404
+  title_key :not_found             # when the key should not follow the type
+end
+```
+
+`Problem::I18nable` brings `Problem::Detailable` with it, so one include covers both. A
+class that spells out a literal `title` keeps it, which lets a codebase move over
+gradually.
 
 Then establish the locale around rendering:
 
@@ -183,14 +200,30 @@ end
 
 That wrapper is not optional if you localize. Rails has already unwound your
 `around_action` by the time an error renders, so the locale has to be re-established
-here. [DESIGN.md](DESIGN.md#localization) has the details.
+here. [DESIGN.md](DESIGN.md#localization) explains why.
+
+## Catching what escapes the controller
+
+A routing error, an unreadable request body or a failure in middleware never reaches a
+controller, so `Problem::Rescuable` never sees it. Wire up the exceptions app:
+
+```ruby
+# config/initializers/problem.rb
+Rails.application.configure do
+  config.exceptions_app = Problem::ExceptionsApp.new(
+    ActionDispatch::PublicExceptions.new(Rails.public_path),
+  )
+end
+```
+
+Browsers keep getting the static error pages. Everything else gets a problem document,
+with the status Rails already mapped the exception to.
 
 ## Error reporting
 
-5xx problems are reported through `ActiveSupport.error_reporter`, which Sentry and
-friends subscribe to. 4xx are not, because an expected client error is not an incident.
-
-To report somewhere else, or to move the line:
+5xx problems are reported through `ActiveSupport.error_reporter`, which Sentry and similar
+gems subscribe to. 4xx are not, on the grounds that an expected client error is not an
+incident. Both are overridable:
 
 ```ruby
 private def report_problem(error, _problem) = Sentry.capture_exception(error)
@@ -213,9 +246,9 @@ raise Errors::TooManyRequests.new(retry_after: 30)
 ```
 
 Sends a `Retry-After` header, interpolates the wait into the title, and adds a
-`retry_after` member to the body.
+`retry_after` member to the body. A `Time` works in place of seconds.
 
-## Adding your own members
+## Extension members
 
 RFC 9457 lets a problem carry extra top-level members. Return them from the occurrence:
 
@@ -232,7 +265,7 @@ end
 {"type":"payment-declined","title":"Payment Declined","status":422,"decline_code":"insufficient_funds"}
 ```
 
-To fill `instance`, which identifies the specific occurrence, use the request:
+To fill `instance`, which identifies the occurrence rather than the type, use the request:
 
 ```ruby
 private def problem_for(error) = error.to_problem.with(instance: request.fullpath)
@@ -243,9 +276,9 @@ private def problem_for(error) = error.to_problem.with(instance: request.fullpat
 Members of the rendered document:
 
 | member | set by | notes |
-|--------|--------|-------|
+|---|---|---|
 | `type` | `type "slug"` | Resolved against `type_prefix`. Defaults to `about:blank`. |
-| `title` | `title "..."` | Short, human readable, constant for the type. |
+| `title` | `title "..."`, or `Problem::I18nable` | Short, human readable, constant for the type. |
 | `status` | `status 403` | Always matches the HTTP status. |
 | `detail` | `new(detail:)` | Specific to the occurrence. Omitted when absent. |
 | `instance` | `problem_instance` | Omitted when absent. |
@@ -254,17 +287,26 @@ Members of the rendered document:
 Hooks on a controller including `Problem::Rescuable`:
 
 | hook | for |
-|------|-----|
+|---|---|
 | `problem_for(error)` | Adding `instance`, a request id, anything request-derived |
-| `around_problem_render(&)` | Locale, or any per-request state the handler needs |
+| `around_problem_render(&)` | Locale, or other per-request state the handler needs |
 | `report_problem?(error, problem)` | What counts as reportable |
 | `report_problem(error, problem)` | Where reports go |
 | `render_problem(problem, error)` | Answering in a different shape entirely |
 
+## Caveats
+
+- The top-level constant is `Problem`. Under Zeitwerk, an application with its own
+  `Problem` model has a conflict to resolve.
+- `i18n` is not a declared dependency. `Problem::I18nable` is autoloaded, so a host that
+  never references it never loads it.
+- RFC 9457 defines no member for field-level validation errors. Use an extension member.
+- `application/problem+xml` is not implemented.
+
 ## Development
 
-```sh
-bin/setup
+```
+bundle install
 bundle exec rake      # specs, then rbs and steep
 hk check --all        # rubocop, actionlint, zizmor
 hk install            # run the linters on commit
@@ -272,11 +314,15 @@ hk install            # run the linters on commit
 
 ## See also
 
-* [DESIGN.md](DESIGN.md) for why the library is shaped this way, and how to plug a
-  problem catalogue into it.
-* [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html), which obsoletes RFC 7807.
-  The format is unchanged; the newer RFC is the one to read.
+- [DESIGN.md](DESIGN.md) for why the library is shaped this way, and how to derive
+  declarations from a problem catalogue of your own.
+- [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html), the format itself.
+
+## Contributing
+
+Bug reports and pull requests are welcome on GitHub at https://github.com/sorah/problem.
 
 ## License
 
-MIT. See [LICENSE.txt](LICENSE.txt).
+The gem is available as open source under the terms of the
+[MIT License](https://opensource.org/licenses/MIT). Copyright (c) 2026 Sorah Fukumori.
