@@ -1,0 +1,5 @@
+# Generated from lib/problem.rb with RBS::Inline
+
+# RFC 9457 Problem Details for HTTP APIs.
+module Problem
+end

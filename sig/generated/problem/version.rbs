@@ -1,0 +1,6 @@
+# Generated from lib/problem/version.rb with RBS::Inline
+
+module Problem
+  # The gem's version.
+  VERSION: String
+end
