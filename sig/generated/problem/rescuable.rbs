@@ -1,0 +1,54 @@
+# Generated from lib/problem/rescuable.rb with RBS::Inline
+
+module Problem
+  # Renders any Problem::Detailable a controller raises as application/problem+json.
+  #
+  #   class ApplicationController < ActionController::API
+  #     include Problem::Rescuable
+  #   end
+  #
+  # One registration covers every error class that mixed Problem::Detailable in, because
+  # rescue_from matches a Module with ===.
+  #
+  # Each step is its own method, so a deployment overrides the one it needs and a
+  # different transport — a Connect RPC error, say — replaces only #render_problem.
+  #
+  # @rbs module-self _RescuableSelf
+  module Rescuable : _RescuableSelf
+    extend ActiveSupport::Concern
+
+    # : (detailable_error) -> void
+    private def render_problem_detailable: (detailable_error) -> void
+
+    # Wraps building, reporting and rendering. Override to re-establish per-request state
+    # that has already unwound: ActionController::Rescue wraps
+    # AbstractController::Callbacks, so an around_action is gone by the time a rescue_from
+    # handler runs, and #problem_for may read a translation.
+    #
+    #   private def around_problem_render(&) = I18n.with_locale(negotiated_locale, &)
+    #
+    # : () { () -> void } -> void
+    private def around_problem_render: () { () -> void } -> void
+
+    # Override to fill members only the request can supply, such as `instance`.
+    # : (detailable_error) -> Details
+    private def problem_for: (detailable_error) -> Details
+
+    # A client error the API expected is not an incident; a server-side failure is.
+    # : (detailable_error, Details) -> bool
+    private def report_problem?: (detailable_error, Details) -> bool
+
+    # A rescue_from handler swallows the exception, so nothing logs it and no error
+    # reporter sees it. Reported through the registry Rails error reporters subscribe to,
+    # rather than to a particular one.
+    # : (detailable_error, Details) -> void
+    private def report_problem: (detailable_error, Details) -> void
+
+    # : (detailable_error) -> void
+    private def apply_problem_headers: (detailable_error) -> void
+
+    # The only transport-specific step.
+    # : (Details, detailable_error) -> void
+    private def render_problem: (Details, detailable_error) -> void
+  end
+end

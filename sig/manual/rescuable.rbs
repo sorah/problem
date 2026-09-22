@@ -1,0 +1,19 @@
+module Problem
+  # What Problem::Rescuable needs from the controller it is mixed into. Declared by hand
+  # for the same reason the sibling gem declares its controller self-type: a mix-in cannot
+  # state the API of its includers.
+  interface _RescuableSelf
+    def render: (**untyped) -> void
+    def response: () -> untyped
+  end
+end
+
+module ActiveSupport
+  # Absent from gem_rbs_collection's activesupport signatures.
+  def self.error_reporter: () -> ErrorReporter
+
+  class ErrorReporter
+    def report: (Exception, ?handled: bool, ?severity: Symbol, ?context: Hash[Symbol, untyped],
+                 ?source: String?) -> void
+  end
+end
