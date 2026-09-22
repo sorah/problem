@@ -1,0 +1,40 @@
+# Generated from lib/problem/exceptions_app.rb with RBS::Inline
+
+module Problem
+  # Answers an exception that escaped the controller — a routing error, an unreadable
+  # body, a failure in middleware — as application/problem+json. Nothing else sees those:
+  # they are raised before dispatch, so no controller rescue_from ever runs.
+  #
+  #   config.exceptions_app = Problem::ExceptionsApp.new(
+  #     ActionDispatch::PublicExceptions.new(Rails.public_path),
+  #   )
+  #
+  # A wrapper rather than an ActionDispatch::PublicExceptions subclass, so each layer of a
+  # deployment's stack claims the requests it recognizes and passes on the rest; a
+  # subclass can only ever be the innermost one.
+  class ExceptionsApp
+    # Wraps the exceptions app to fall back to, which keeps whatever it already answers
+    # for the requests this one does not claim.
+    # : (untyped app) -> void
+    def initialize: (untyped app) -> void
+
+    # Answers with a problem document, or hands the request to the wrapped app.
+    # : (Hash[String, untyped]) -> [Integer, Hash[String, String], Array[String]]
+    def call: (Hash[String, untyped]) -> [ Integer, Hash[String, String], Array[String] ]
+
+    # Browser traffic keeps getting the wrapped app's static error pages.
+    # : (Hash[String, untyped]) -> bool
+    private def html?: (Hash[String, untyped]) -> bool
+
+    # The problem to send for an escaped exception. The title is the status's own text,
+    # never the exception's message, which can quote internals.
+    #
+    # Override to publish a type: a deployment with a catalogue of problems maps the
+    # status onto it here, so every identifier a client can see comes from one place.
+    # : (Exception, Hash[String, untyped]) -> Details
+    private def problem_for: (Exception, Hash[String, untyped]) -> Details
+
+    # : (Details) -> [Integer, Hash[String, String], Array[String]]
+    private def render_problem: (Details) -> [ Integer, Hash[String, String], Array[String] ]
+  end
+end

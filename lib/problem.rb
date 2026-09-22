@@ -10,6 +10,7 @@ require "problem/details"
 require "problem/detailable"
 require "problem/retry_after"
 require "problem/rescuable"
+require "problem/exceptions_app"
 
 # RFC 9457 Problem Details for HTTP APIs.
 module Problem
