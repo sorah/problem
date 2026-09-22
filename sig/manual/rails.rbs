@@ -1,0 +1,14 @@
+# Rails APIs the gem uses that gem_rbs_collection does not declare.
+module Rails
+  class Railtie
+    def self.initializer: (String, **untyped) ?{ (untyped) -> void } -> void
+  end
+
+  class Application
+    class Configuration
+      # Set by Problem::Railtie, read by its initializer.
+      def problem: () -> untyped
+      def problem=: (untyped) -> void
+    end
+  end
+end

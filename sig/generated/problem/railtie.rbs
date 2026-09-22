@@ -1,0 +1,12 @@
+# Generated from lib/problem/railtie.rb with RBS::Inline
+
+module Problem
+  # Wires the gem into a Rails application on boot.
+  #
+  #   config.problem.type_prefix = "https://api-probs.example.com/"
+  #
+  # config.exceptions_app is deliberately left alone: replacing what an application set
+  # there is not an initializer's business, so Problem::ExceptionsApp is wired by hand.
+  class Railtie < ::Rails::Railtie
+  end
+end

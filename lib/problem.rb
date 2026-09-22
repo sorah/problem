@@ -40,6 +40,14 @@ module Problem
     yield(config)
   end
 
+  # Registers the application/problem+json media type and the `problem:` renderer. Called
+  # by Problem::Railtie on boot; a Rack host or a spec that never boots Rails calls it.
+  #: () -> void
+  def self.install!
+    require "problem/renderer"
+    Renderer.install!
+  end
+
   # The type URI a declared value publishes. `about:blank` and anything already absolute
   # are returned untouched — prefixing `about:blank` would produce a URI that looks valid
   # and means nothing.
@@ -51,3 +59,5 @@ module Problem
     prefix ? "#{prefix}#{value}" : value
   end
 end
+
+require "problem/railtie" if defined?(Rails::Railtie)

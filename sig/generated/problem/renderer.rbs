@@ -1,0 +1,16 @@
+# Generated from lib/problem/renderer.rb with RBS::Inline
+
+module Problem
+  # Registers the application/problem+json media type and the `problem:` renderer.
+  #
+  #   render problem: error.to_problem
+  #
+  # Installed by Problem::Railtie on boot; a Rack host or a spec that never boots Rails
+  # calls Problem.install! itself.
+  module Renderer
+    # Renders whatever it is handed, so a deployment can pass its own serializer's object
+    # rather than a Problem::Details as long as it answers #status and #to_json.
+    # : () -> void
+    def self.install!: () -> void
+  end
+end
