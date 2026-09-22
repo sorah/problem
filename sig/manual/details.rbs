@@ -1,0 +1,24 @@
+module Problem
+  # Hand-written: rbs-inline cannot describe a `Data.define` assignment, so
+  # lib/problem/details.rb carries no `rbs_inline` magic comment.
+  class Details < ::Data
+    include Document
+
+    attr_reader type: String?
+    attr_reader title: String?
+    attr_reader status: Integer
+    attr_reader detail: String?
+    attr_reader instance: String?
+    attr_reader extensions: Hash[Symbol, untyped]
+
+    def self.new: (status: Integer, ?type: String?, ?title: String?, ?detail: String?,
+                   ?instance: String?, ?extensions: Hash[untyped, untyped]) -> Details
+
+    def self.members: () -> Array[Symbol]
+
+    def initialize: (status: Integer, ?type: String?, ?title: String?, ?detail: String?,
+                     ?instance: String?, ?extensions: Hash[untyped, untyped]) -> void
+
+    private def sanitized_extensions: (Hash[untyped, untyped]) -> Hash[Symbol, untyped]
+  end
+end

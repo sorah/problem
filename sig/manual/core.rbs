@@ -1,0 +1,5 @@
+# `Data.define` generates a keyword-taking `initialize` on the class it returns, but core
+# RBS declares none, so a subclass overriding `initialize` has nothing to call `super` on.
+class Data
+  def initialize: (**untyped) -> void
+end

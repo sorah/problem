@@ -1,0 +1,12 @@
+module Problem
+  # What Problem::Document needs from the value object including it. Declared by hand
+  # because a module cannot state the readers of its includers on its own.
+  interface _Document
+    def type: () -> String?
+    def title: () -> String?
+    def status: () -> Integer
+    def detail: () -> String?
+    def instance: () -> String?
+    def extensions: () -> Hash[Symbol, untyped]
+  end
+end
