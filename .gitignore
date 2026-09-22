@@ -1,0 +1,10 @@
+/pkg/
+/tmp/
+*.gem
+Gemfile.lock
+
+# rspec failure tracking
+.rspec_status
+
+# Installed by `rbs collection install`; the lock file is what is checked in.
+/.gem_rbs_collection/
