@@ -3,6 +3,10 @@
 *.gem
 Gemfile.lock
 
+# Bundler's local config, and where CI installs gems with `bundle config path`.
+/.bundle/
+/vendor/
+
 # rspec failure tracking
 .rspec_status
 
