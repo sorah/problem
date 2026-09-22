@@ -1,0 +1,55 @@
+# Generated from lib/problem/i18nable.rb with RBS::Inline
+
+module Problem
+  # Looks a problem's title up through I18n instead of declaring it in Ruby.
+  #
+  #   class ApiError < StandardError
+  #     include Problem::I18nable
+  #   end
+  #
+  #   class NotFound < ApiError
+  #     type "not-found"
+  #     status 404
+  #   end
+  #
+  #   en:
+  #     problem_details:
+  #       titles:
+  #         not_found: "Not Found"
+  #
+  # Titles are keyed by the declared type, dashes replaced, so two classes publishing one
+  # type publish one title as well. That is what keeps a subclass written to be
+  # indistinguishable from its parent indistinguishable in the title too.
+  #
+  # A class that declares a literal title keeps it, so a codebase can move over gradually.
+  #
+  # i18n is not a declared dependency of this gem. Referencing this module is opting in,
+  # and it is autoloaded so that a host which never does pays nothing for it.
+  #
+  # @rbs module-self ::Exception
+  # @rbs module-self _DetailableSelf
+  module I18nable : ::Exception, _DetailableSelf
+    extend ActiveSupport::Concern
+
+    include Detailable
+
+    # Where titles live unless a class says otherwise.
+    DEFAULT_SCOPE: String
+
+    # @rbs module-self _I18nableClass
+    module ClassMethods : _I18nableClass
+      # The I18n scope titles are looked up under.
+      # : (?String?) -> String
+      def title_scope: (?String?) -> String
+
+      # The key within that scope, derived from the declared type unless it is set.
+      # : (?(String | Symbol)?) -> String?
+      def title_key: (?(String | Symbol)?) -> String?
+
+      # Falls through to the literal DSL for a class that declares a title of its own, or
+      # that has no type to build a key from.
+      # : (?String?, ?interpolations: Hash[Symbol, untyped]) -> String?
+      def title: (?String?, ?interpolations: Hash[Symbol, untyped]) -> String?
+    end
+  end
+end

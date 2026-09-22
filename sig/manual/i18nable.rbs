@@ -1,0 +1,15 @@
+module Problem
+  # The class-level state Problem::I18nable adds, plus what it reaches on
+  # Problem::Detailable to fall through to.
+  interface _I18nableClass
+    def problem_title_scope: () -> String?
+    def problem_title_scope=: (String?) -> void
+    def problem_title_key: () -> String?
+    def problem_title_key=: (String?) -> void
+
+    def problem_title: () -> String?
+    def type: (?String?) -> String?
+    def title_scope: (?String?) -> String
+    def title_key: (?(String | Symbol)?) -> String?
+  end
+end

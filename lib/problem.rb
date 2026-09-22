@@ -14,6 +14,10 @@ require "problem/exceptions_app"
 
 # RFC 9457 Problem Details for HTTP APIs.
 module Problem
+  # Autoloaded because it is the one part of the gem that needs i18n, which is not a
+  # declared dependency.
+  autoload :I18nable, "problem/i18nable"
+
   # Anything a deployment sets once, rather than per error class.
   class Configuration
     # Resolves a declared type slug into the URI a client dispatches on, so an error class
