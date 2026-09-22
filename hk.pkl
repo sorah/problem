@@ -1,0 +1,46 @@
+amends "package://github.com/jdx/hk/releases/download/v1.53.0/hk@1.53.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.53.0/hk@1.53.0#/Builtins.pkl"
+
+// sig/generated is rbs-inline output, checked as generated rather than linted.
+exclude = List("sig/generated/**")
+
+local linters = new Mapping<String, Step> {
+  ["rubocop"] {
+    glob = List("**/*.rb", "**/*.rake", "Rakefile", "*.gemspec")
+    check = "bundle exec rubocop --force-exclusion {{files}}"
+    fix = "bundle exec rubocop --force-exclusion --autocorrect {{files}}"
+    batch = true
+  }
+  ["actionlint"] = Builtins.actionlint
+  ["check-added-large-files"] = Builtins.check_added_large_files
+  ["check-byte-order-marker"] = Builtins.check_byte_order_marker
+  ["check-merge-conflict"] = Builtins.check_merge_conflict
+  ["check-symlinks"] = Builtins.check_symlinks
+  ["detect-private-key"] = Builtins.detect_private_key
+  ["fix-byte-order-marker"] = Builtins.fix_byte_order_marker
+  ["mise"] = Builtins.mise
+  ["mixed-line-ending"] = Builtins.mixed_line_ending
+  ["newlines"] = Builtins.newlines
+  ["pkl"] = Builtins.pkl
+  ["pkl-format"] = Builtins.pkl_format
+  ["trailing-whitespace"] = Builtins.trailing_whitespace
+  ["zizmor"] = Builtins.zizmor
+}
+
+hooks {
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps {
+      ...linters
+      ["no-commit-to-branch"] = Builtins.no_commit_to_branch
+    }
+  }
+  ["fix"] {
+    fix = true
+    steps = linters
+  }
+  ["check"] {
+    steps = linters
+  }
+}
